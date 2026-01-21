@@ -42,7 +42,7 @@ const AdminLayout = () => {
       <aside className="admin-sidebar">
         <div className="sidebar-header">
           <h2>📚 Admin Panel</h2>
-          <p className="admin-name">{admin?.name}</p>
+          <p className="admin-name">{admin?.name || 'Administrator'}</p>
         </div>
 
         <nav className="sidebar-nav">
@@ -58,9 +58,11 @@ const AdminLayout = () => {
           ))}
         </nav>
 
-        <button className="logout-btn" onClick={handleLogout}>
-          <FaSignOutAlt /> Logout
-        </button>
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={handleLogout}>
+            <FaSignOutAlt /> <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}

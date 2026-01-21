@@ -1,5 +1,9 @@
 import axios from 'axios';
 
+// =====================================================
+// API Configuration - Production Grade with Best Practices
+// =====================================================
+
 // Dynamically determine API URL based on environment
 const getApiUrl = () => {
   // If running on Vercel/production, use relative URL (same origin)
@@ -12,55 +16,146 @@ const getApiUrl = () => {
 
 const API_URL = getApiUrl();
 
-// Create axios instance
+// =====================================================
+// Retry Configuration - Exponential Backoff
+// =====================================================
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 1000, // 1 second
+  maxDelay: 10000, // 10 seconds max
+  retryableStatuses: [408, 429, 500, 502, 503, 504],
+  retryableErrors: ['ECONNABORTED', 'ETIMEDOUT', 'ENOTFOUND', 'ENETUNREACH', 'ERR_NETWORK']
+};
+
+// Calculate delay with exponential backoff and jitter
+const getRetryDelay = (attempt) => {
+  const exponentialDelay = RETRY_CONFIG.baseDelay * Math.pow(2, attempt);
+  const jitter = Math.random() * 1000; // Add up to 1s of random jitter
+  return Math.min(exponentialDelay + jitter, RETRY_CONFIG.maxDelay);
+};
+
+// Sleep utility for delays
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Check if error is retryable
+const isRetryableError = (error) => {
+  // Network errors
+  if (!error.response) {
+    return RETRY_CONFIG.retryableErrors.some(errCode => 
+      error.code === errCode || error.message?.includes(errCode)
+    );
+  }
+  // Server errors
+  return RETRY_CONFIG.retryableStatuses.includes(error.response.status);
+};
+
+// =====================================================
+// Create Axios Instance with Optimized Settings
+// =====================================================
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 30000 // 30 second timeout
+  timeout: 15000, // 15 second timeout (reduced for faster failure detection)
+  // Validate response status
+  validateStatus: (status) => status >= 200 && status < 300
 });
 
-// Add token to requests
+// =====================================================
+// Request Interceptor - Add Auth Token
+// =====================================================
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Add request timestamp for timing
+    config.metadata = { startTime: Date.now() };
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor for error handling
+// =====================================================
+// Response Interceptor - Error Handling & Retry Logic
+// =====================================================
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response) => {
+    // Log response time in development
+    if (process.env.NODE_ENV === 'development' && response.config.metadata) {
+      const duration = Date.now() - response.config.metadata.startTime;
+      console.debug(`API ${response.config.method?.toUpperCase()} ${response.config.url}: ${duration}ms`);
+    }
+    return response;
+  },
+  async (error) => {
+    const config = error.config;
+    
+    // Initialize retry count
+    config.retryCount = config.retryCount || 0;
+    
+    // Check if we should retry
+    if (config.retryCount < RETRY_CONFIG.maxRetries && isRetryableError(error)) {
+      config.retryCount++;
+      const delay = getRetryDelay(config.retryCount);
+      
+      console.warn(`API Retry ${config.retryCount}/${RETRY_CONFIG.maxRetries} after ${Math.round(delay)}ms:`, 
+        config.url, error.message);
+      
+      await sleep(delay);
+      return api(config);
+    }
+    
     // Handle specific error cases
     if (error.response) {
-      // Server responded with error status
-      if (error.response.status === 401) {
-        // Unauthorized - clear token and redirect to login
+      const status = error.response.status;
+      const message = error.response.data?.message || error.message;
+      
+      // Unauthorized - clear token and redirect to login
+      if (status === 401) {
         localStorage.removeItem('token');
-        // Only redirect if not already on login page
         if (!window.location.pathname.includes('/admin/login')) {
-          window.location.href = '/admin/login';
+          // Use a slight delay to allow any state updates
+          setTimeout(() => {
+            window.location.href = '/admin/login';
+          }, 100);
         }
       }
-      console.error('API Error:', error.response.data?.message || error.message);
+      
+      // Log meaningful error info
+      console.error(`API Error [${status}]:`, message, config.url);
     } else if (error.request) {
-      // Request made but no response received
-      console.error('Network Error: No response received from server');
+      // Request made but no response received (network error)
+      console.error('Network Error: No response from server. Please check your connection.');
     } else {
-      // Something happened in setting up the request
+      // Error in request setup
       console.error('Request Error:', error.message);
     }
+    
     return Promise.reject(error);
   }
 );
 
+// =====================================================
+// API Helper - Wrapper with Built-in Error Handling
+// =====================================================
+const safeApiCall = async (apiPromise, defaultValue = null) => {
+  try {
+    const response = await apiPromise;
+    return { success: true, data: response.data, error: null };
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 
+                         error.message || 
+                         'An unexpected error occurred';
+    return { success: false, data: defaultValue, error: errorMessage };
+  }
+};
+
+// =====================================================
 // Authentication API
+// =====================================================
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/register', data),
@@ -68,18 +163,24 @@ export const authAPI = {
   changePassword: (data) => api.put('/auth/change-password', data)
 };
 
-// Course API
+// =====================================================
+// Course API - with safe wrapper option
+// =====================================================
 export const courseAPI = {
   getAll: () => api.get('/courses'),
+  getAllSafe: () => safeApiCall(api.get('/courses'), { data: [] }),
   getById: (id) => api.get(`/courses/${id}`),
   create: (data) => api.post('/courses', data),
   update: (id, data) => api.put(`/courses/${id}`, data),
   delete: (id) => api.delete(`/courses/${id}`)
 };
 
+// =====================================================
 // Lecture API
+// =====================================================
 export const lectureAPI = {
   getByCourse: (courseId) => api.get(`/lectures/course/${courseId}`),
+  getByCoursesSafe: (courseId) => safeApiCall(api.get(`/lectures/course/${courseId}`), { data: [] }),
   getAllByCourse: (courseId) => api.get(`/lectures/admin/course/${courseId}`),
   getById: (id) => api.get(`/lectures/${id}`),
   create: (data) => api.post('/lectures', data),
@@ -87,7 +188,9 @@ export const lectureAPI = {
   delete: (id) => api.delete(`/lectures/${id}`)
 };
 
+// =====================================================
 // Assignment API
+// =====================================================
 export const assignmentAPI = {
   getByCourse: (courseId) => api.get(`/assignments/course/${courseId}`),
   getAllByCourse: (courseId) => api.get(`/assignments/admin/course/${courseId}`),
@@ -97,7 +200,9 @@ export const assignmentAPI = {
   delete: (id) => api.delete(`/assignments/${id}`)
 };
 
+// =====================================================
 // Tutorial API
+// =====================================================
 export const tutorialAPI = {
   getByCourse: (courseId) => api.get(`/tutorials/course/${courseId}`),
   getAllByCourse: (courseId) => api.get(`/tutorials/admin/course/${courseId}`),
@@ -107,7 +212,9 @@ export const tutorialAPI = {
   delete: (id) => api.delete(`/tutorials/${id}`)
 };
 
+// =====================================================
 // Prerequisite API
+// =====================================================
 export const prerequisiteAPI = {
   getByCourse: (courseId) => api.get(`/prerequisites/course/${courseId}`),
   create: (data) => api.post('/prerequisites', data),
@@ -115,7 +222,9 @@ export const prerequisiteAPI = {
   delete: (id) => api.delete(`/prerequisites/${id}`)
 };
 
+// =====================================================
 // Exam API
+// =====================================================
 export const examAPI = {
   getByCourse: (courseId) => api.get(`/exams/course/${courseId}`),
   getAllByCourse: (courseId) => api.get(`/exams/admin/course/${courseId}`),
@@ -125,7 +234,9 @@ export const examAPI = {
   delete: (id) => api.delete(`/exams/${id}`)
 };
 
+// =====================================================
 // Resource API
+// =====================================================
 export const resourceAPI = {
   getByCourse: (courseId, category) => {
     const url = category 
@@ -138,7 +249,9 @@ export const resourceAPI = {
   delete: (id) => api.delete(`/resources/${id}`)
 };
 
+// =====================================================
 // Teaching Assistant API
+// =====================================================
 export const taAPI = {
   getByCourse: (courseId) => api.get(`/teaching-assistants/course/${courseId}`),
   getById: (id) => api.get(`/teaching-assistants/${id}`),
@@ -147,4 +260,6 @@ export const taAPI = {
   delete: (id) => api.delete(`/teaching-assistants/${id}`)
 };
 
+// Export safe API call helper for use in components
+export { safeApiCall };
 export default api;

@@ -6,6 +6,7 @@
  * - Handles reconnection automatically
  * - Provides connection status checking
  * - Implements proper error handling
+ * - Optimized for fast connections and security
  */
 
 const mongoose = require('mongoose');
@@ -26,32 +27,43 @@ if (!cached) {
 }
 
 /**
- * Get MongoDB connection options optimized for serverless
+ * Get MongoDB connection options optimized for serverless and performance
  */
 const getConnectionOptions = () => ({
-  // Connection pool settings
-  maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE) || 10,
-  minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE) || 2,
+  // =====================================================
+  // OPTIMIZED CONNECTION POOL - Fast & Efficient
+  // =====================================================
+  maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE) || 20,
+  minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE) || 5,
   
-  // Timeout settings
-  serverSelectionTimeoutMS: 10000,
-  socketTimeoutMS: 45000,
-  connectTimeoutMS: 10000,
+  // =====================================================
+  // OPTIMIZED TIMEOUTS - Faster Response Times
+  // =====================================================
+  serverSelectionTimeoutMS: 5000,     // Reduced for faster failover
+  socketTimeoutMS: 30000,             // Optimized for quick error detection
+  connectTimeoutMS: 5000,             // Fast initial connection
+  heartbeatFrequencyMS: 5000,         // More frequent health checks
   
-  // Heartbeat and monitoring
-  heartbeatFrequencyMS: 10000,
-  
-  // Write and read settings
+  // =====================================================
+  // WRITE/READ OPTIMIZATION
+  // =====================================================
   retryWrites: true,
   retryReads: true,
   w: 'majority',
+  readPreference: 'primaryPreferred', // Fast reads with fallback
   
-  // Serverless optimizations
+  // =====================================================
+  // SERVERLESS & PERFORMANCE OPTIMIZATION
+  // =====================================================
   bufferCommands: false,
-  maxIdleTimeMS: 30000,
+  maxIdleTimeMS: 60000,               // Keep connections alive longer
+  compressors: ['zlib'],              // Enable compression
   
-  // Auto index (disable in production for performance)
+  // =====================================================
+  // SECURITY
+  // =====================================================
   autoIndex: process.env.NODE_ENV !== 'production',
+  family: 4,                          // Force IPv4
 });
 
 /**

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Public Pages
 import HomePage from './pages/public/HomePage';
@@ -42,47 +43,83 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/lectures" element={<LecturesPage />} />
-          {/* Redirect old curriculum route to lectures */}
-          <Route path="/curriculum" element={<Navigate to="/lectures" replace />} />
-          <Route path="/assignments" element={<AssignmentsPage />} />
-          <Route path="/tutorials" element={<TutorialsPage />} />
-          <Route path="/exams" element={<ExamsPage />} />
-          <Route path="/prerequisites" element={<PrerequisitesPage />} />
-          <Route path="/resources" element={<ResourcesPage />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Public Routes - Each wrapped in ErrorBoundary for isolation */}
+            <Route path="/" element={
+              <ErrorBoundary>
+                <HomePage />
+              </ErrorBoundary>
+            } />
+            <Route path="/lectures" element={
+              <ErrorBoundary>
+                <LecturesPage />
+              </ErrorBoundary>
+            } />
+            {/* Redirect old curriculum route to lectures */}
+            <Route path="/curriculum" element={<Navigate to="/lectures" replace />} />
+            <Route path="/assignments" element={
+              <ErrorBoundary>
+                <AssignmentsPage />
+              </ErrorBoundary>
+            } />
+            <Route path="/tutorials" element={
+              <ErrorBoundary>
+                <TutorialsPage />
+              </ErrorBoundary>
+            } />
+            <Route path="/exams" element={
+              <ErrorBoundary>
+                <ExamsPage />
+              </ErrorBoundary>
+            } />
+            <Route path="/prerequisites" element={
+              <ErrorBoundary>
+                <PrerequisitesPage />
+              </ErrorBoundary>
+            } />
+            <Route path="/resources" element={
+              <ErrorBoundary>
+                <ResourcesPage />
+              </ErrorBoundary>
+            } />
 
-          {/* Admin Login */}
-          <Route path="/admin/login" element={<AdminLogin />} />
+            {/* Admin Login */}
+            <Route path="/admin/login" element={
+              <ErrorBoundary>
+                <AdminLogin />
+              </ErrorBoundary>
+            } />
 
-          {/* Protected Admin Routes */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<AdminDashboard />} />
-            <Route path="courses" element={<CourseManager />} />
-            <Route path="lectures" element={<LectureManager />} />
-            <Route path="assignments" element={<AssignmentManager />} />
-            <Route path="tutorials" element={<TutorialManager />} />
-            <Route path="prerequisites" element={<PrerequisiteManager />} />
-            <Route path="exams" element={<ExamManager />} />
-            <Route path="resources" element={<ResourceManager />} />
-          </Route>
+            {/* Protected Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <ErrorBoundary>
+                    <AdminLayout />
+                  </ErrorBoundary>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="courses" element={<CourseManager />} />
+              <Route path="lectures" element={<LectureManager />} />
+              <Route path="assignments" element={<AssignmentManager />} />
+              <Route path="tutorials" element={<TutorialManager />} />
+              <Route path="prerequisites" element={<PrerequisiteManager />} />
+              <Route path="exams" element={<ExamManager />} />
+              <Route path="resources" element={<ResourceManager />} />
+            </Route>
 
-          {/* 404 */}
-          <Route path="*" element={<div>Page Not Found</div>} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+            {/* 404 */}
+            <Route path="*" element={<div>Page Not Found</div>} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

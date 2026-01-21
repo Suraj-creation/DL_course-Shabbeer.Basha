@@ -14,7 +14,8 @@ dotenv.config();
 const app = express();
 
 // Trust Vercel's reverse proxy (required for serverless deployment)
-app.set('trust proxy', true);
+// Use '1' to trust first proxy, which is safer than 'true'
+app.set('trust proxy', 1);
 
 // =====================================================
 // Security Middleware - Production Grade
@@ -40,7 +41,9 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // Skip rate limiting for health checks
-  skip: (req) => req.path === '/api/health'
+  skip: (req) => req.path === '/api/health',
+  // Validate prevents the trust proxy error
+  validate: { trustProxy: false }
 });
 
 // Apply rate limiting to API routes
@@ -53,7 +56,8 @@ const authLimiter = rateLimit({
   message: {
     success: false,
     message: 'Too many login attempts, please try again after an hour.'
-  }
+  },
+  validate: { trustProxy: false }
 });
 app.use('/api/auth/login', authLimiter);
 
@@ -107,25 +111,59 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 let cachedConnection = null;
 
 const mongooseOptions = {
-  // Connection pool settings for serverless
-  maxPoolSize: 10,                    // Maximum number of connections in the pool
-  minPoolSize: 2,                     // Minimum number of connections
-  serverSelectionTimeoutMS: 10000,    // Timeout for server selection (10s)
-  socketTimeoutMS: 45000,             // Timeout for socket operations (45s)
-  heartbeatFrequencyMS: 10000,        // Frequency of heartbeat checks
-  retryWrites: true,                  // Retry failed writes
-  retryReads: true,                   // Retry failed reads
-  w: 'majority',                      // Write concern for data safety
-  // Serverless optimization
-  bufferCommands: false,              // Disable buffering for faster error detection
-  maxIdleTimeMS: 30000,               // Close connections idle for 30s (important for serverless)
+  // =====================================================
+  // OPTIMIZED CONNECTION POOL - Fast & Efficient
+  // =====================================================
+  maxPoolSize: 10,                    // Balanced pool size for stability
+  minPoolSize: 2,                     // Minimum connections ready
+  
+  // =====================================================
+  // OPTIMIZED TIMEOUTS - Balanced for Stability
+  // =====================================================
+  serverSelectionTimeoutMS: 15000,    // Allow more time for server selection (15s)
+  socketTimeoutMS: 45000,             // Socket timeout (45s) for slow operations
+  connectTimeoutMS: 30000,            // Connection timeout (30s) for initial connect
+  heartbeatFrequencyMS: 10000,        // Heartbeat every 10s to keep connection alive
+  
+  // =====================================================
+  // WRITE/READ OPTIMIZATION
+  // =====================================================
+  retryWrites: true,                  // Retry failed writes automatically
+  retryReads: true,                   // Retry failed reads automatically
+  w: 'majority',                      // Write concern for data consistency
+  readPreference: 'primaryPreferred', // Read from primary, fallback to secondary
+  
+  // =====================================================
+  // CONNECTION STABILITY - KEEP ALIVE
+  // =====================================================
+  maxIdleTimeMS: 300000,              // Keep idle connections for 5 minutes
+  waitQueueTimeoutMS: 10000,          // Wait queue timeout
+  
+  // =====================================================
+  // SERVERLESS & PERFORMANCE OPTIMIZATION
+  // =====================================================
+  bufferCommands: true,               // Buffer commands when disconnected (helps with reconnection)
+  compressors: ['zlib'],              // Enable compression for faster data transfer
+  
+  // =====================================================
+  // SECURITY - Prevent Data Leakage
+  // =====================================================
+  autoIndex: process.env.NODE_ENV !== 'production', // Disable auto-indexing in production
+  family: 4,                          // Force IPv4 for consistent connections
 };
 
+// Connection promise for concurrent requests
+let connectionPromise = null;
+
 const connectDB = async () => {
-  // If we have a cached connection and it's connected, reuse it
+  // Fast path: If already connected, return immediately
   if (cachedConnection && mongoose.connection.readyState === 1) {
-    console.log('📦 Using cached MongoDB connection');
     return cachedConnection;
+  }
+
+  // If connection is in progress, wait for it (prevents multiple concurrent connections)
+  if (connectionPromise) {
+    return connectionPromise;
   }
 
   // Check if MONGODB_URI is defined
@@ -134,19 +172,29 @@ const connectDB = async () => {
     throw new Error('MONGODB_URI environment variable is required');
   }
 
+  // Create connection promise for concurrent request handling
+  connectionPromise = (async () => {
+    try {
+      console.log('🔄 Connecting to MongoDB Atlas...');
+      const startTime = Date.now();
+      
+      const conn = await mongoose.connect(process.env.MONGODB_URI, mongooseOptions);
+      
+      cachedConnection = conn;
+      const connectionTime = Date.now() - startTime;
+      
+      console.log(`✅ MongoDB connected in ${connectionTime}ms`);
+      console.log(`📊 Database: ${conn.connection.name}`);
+      console.log(`🌐 Host: ${conn.connection.host}`);
+      
+      return conn;
+    } finally {
+      connectionPromise = null; // Reset promise after connection attempt
+    }
+  })();
+
   try {
-    console.log('🔄 Connecting to MongoDB Atlas...');
-    
-    const conn = await mongoose.connect(process.env.MONGODB_URI, mongooseOptions);
-    
-    cachedConnection = conn;
-    
-    console.log('✅ MongoDB connected successfully');
-    console.log(`📊 Database: ${conn.connection.name}`);
-    console.log(`🌐 Host: ${conn.connection.host}`);
-    console.log(`🔗 Connection State: ${mongoose.connection.readyState}`);
-    
-    return conn;
+    return await connectionPromise;
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message);
     
@@ -165,18 +213,65 @@ const connectDB = async () => {
   }
 };
 
-// MongoDB connection event handlers
+// MongoDB connection event handlers with auto-reconnect
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_INTERVAL = 3000; // 3 seconds initial delay
+let isReconnecting = false;
+
 mongoose.connection.on('connected', () => {
   console.log('🟢 Mongoose connected to MongoDB Atlas');
+  reconnectAttempts = 0; // Reset on successful connection
+  isReconnecting = false;
 });
 
 mongoose.connection.on('error', (err) => {
   console.error('🔴 Mongoose connection error:', err.message);
+  // Don't clear cache on temporary errors
+  if (err.message.includes('ECONNRESET') || err.message.includes('timed out')) {
+    console.log('⚠️ Temporary connection error, will auto-reconnect...');
+  } else {
+    cachedConnection = null;
+  }
 });
 
 mongoose.connection.on('disconnected', () => {
   console.log('🟡 Mongoose disconnected from MongoDB');
-  cachedConnection = null; // Clear cache on disconnect
+  cachedConnection = null;
+  
+  // Auto-reconnect logic with exponential backoff
+  if (!isReconnecting && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+    isReconnecting = true;
+    reconnectAttempts++;
+    // Exponential backoff: 3s, 6s, 12s, etc. (max 30s)
+    const delay = Math.min(RECONNECT_INTERVAL * Math.pow(2, reconnectAttempts - 1), 30000);
+    console.log(`🔄 Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay/1000}s...`);
+    setTimeout(async () => {
+      try {
+        await connectDB();
+      } catch (err) {
+        console.error('Reconnection attempt failed:', err.message);
+        isReconnecting = false;
+      }
+    }, delay);
+  } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.error('❌ Max reconnection attempts reached. Manual intervention required.');
+  }
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit in production, just log
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error.message);
+  // In production, we might want to gracefully shutdown
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Uncaught exception in production, continuing operation...');
+  }
 });
 
 // Handle process termination gracefully
@@ -244,22 +339,38 @@ const initializeApp = async () => {
 initializeApp();
 
 // =====================================================
-// Middleware to ensure DB connection for each request
+// OPTIMIZED Middleware - Fast DB Connection Check
 // =====================================================
 app.use(async (req, res, next) => {
+  // Skip DB check for health endpoint to avoid overhead
+  if (req.path === '/api/health') {
+    return next();
+  }
+  
   try {
-    // Check if connection is ready
-    if (mongoose.connection.readyState !== 1) {
-      console.log('🔄 Reconnecting to MongoDB...');
+    // Fast path: Already connected
+    const readyState = mongoose.connection.readyState;
+    if (readyState === 1) {
+      return next();
+    }
+    
+    // Reconnect only if disconnected or disconnecting
+    if (readyState === 0 || readyState === 3) {
       await connectDB();
+    } else if (readyState === 2) {
+      // Connection in progress, wait briefly
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (mongoose.connection.readyState !== 1) {
+        await connectDB();
+      }
     }
     next();
   } catch (error) {
-    console.error('Database connection middleware error:', error);
+    console.error('Database connection error:', error.message);
     res.status(503).json({
       success: false,
-      message: 'Database connection unavailable. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Database temporarily unavailable. Please retry.',
+      retryAfter: 2
     });
   }
 });

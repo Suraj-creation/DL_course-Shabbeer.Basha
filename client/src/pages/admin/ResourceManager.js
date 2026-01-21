@@ -98,16 +98,16 @@ const ResourceManager = () => {
   return (
     <div className="manager-page">
       <div className="page-header">
-        <h2>📦 Resource Manager</h2>
+        <h1>📦 Resource Manager</h1>
         <button className="btn-primary" onClick={() => setShowForm(!showForm)} disabled={!selectedCourse}>
-          {showForm ? '✕ Cancel' : '➕ Add New Resource'}
+          {showForm ? '✕ Cancel' : '+ Add New Resource'}
         </button>
       </div>
 
       <div className="course-selector">
         <label>Select Course:</label>
         <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
-          <option value="">-- Choose a course --</option>
+          <option value="">Select a course...</option>
           {courses.map(course => (<option key={course._id} value={course._id}>{course.courseCode} - {course.courseTitle}</option>))}
         </select>
       </div>
@@ -162,7 +162,7 @@ const ResourceManager = () => {
                   {formData.tags.length > 1 && (<button type="button" onClick={() => removeTag(index)} className="btn-remove">✕</button>)}
                 </div>
               ))}
-              <button type="button" onClick={addTag} className="btn-secondary">+ Add Tag</button>
+              <button type="button" onClick={addTag} className="btn-add">+ Add Tag</button>
             </div>
 
             <div className="form-row">
@@ -183,8 +183,8 @@ const ResourceManager = () => {
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="btn-primary">{editingId ? 'Update Resource' : 'Create Resource'}</button>
-              <button type="button" className="btn-secondary" onClick={resetForm}>Cancel</button>
+              <button type="submit" className="btn-primary">{editingId ? '✓ Update Resource' : '+ Create Resource'}</button>
+              <button type="button" className="btn-secondary" onClick={resetForm}>✕ Cancel</button>
             </div>
           </form>
         </div>

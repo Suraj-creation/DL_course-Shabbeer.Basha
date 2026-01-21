@@ -27,15 +27,7 @@ const Footer = () => {
               <p style={{fontSize: '0.9rem', marginTop: '12px'}}>
                 <strong>Instructor:</strong> Dr. Shabbeer Basha
               </p>
-              <a 
-                href="https://sites.google.com/site/shabbeerbashash" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="instructor-link"
-                style={{fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#3498db'}}
-              >
-                Instructor Website <FaExternalLinkAlt size={10} />
-              </a>
+
             </div>
           </div>
 

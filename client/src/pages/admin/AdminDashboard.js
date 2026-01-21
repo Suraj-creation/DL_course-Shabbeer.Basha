@@ -165,17 +165,6 @@ const AdminDashboard = () => {
           </ul>
         </div>
       )}
-
-      <div className="recent-activity">
-        <h2>Getting Started</h2>
-        <ul>
-          <li>✅ Create your first course in the Courses section</li>
-          <li>✅ Add lectures with slides and video links</li>
-          <li>✅ Create assignments with due dates</li>
-          <li>✅ Add tutorials and practice problems</li>
-          <li>✅ Organize resources for students</li>
-        </ul>
-      </div>
     </div>
   );
 };

@@ -2,82 +2,116 @@ const express = require('express');
 const router = express.Router();
 const Lecture = require('../models/Lecture');
 const auth = require('../middleware/auth');
+const { 
+  asyncHandler, 
+  validateObjectId, 
+  sendSuccess, 
+  sendList, 
+  sendNotFound, 
+  handleRouteError,
+  optimizeQuery 
+} = require('../utils/routeHelpers');
 
-// Get all lectures for a course (public - only published)
-router.get('/course/:courseId', async (req, res) => {
-  try {
-    const lectures = await Lecture.find({ 
-      courseId: req.params.courseId,
-      isPublished: true 
-    }).sort({ lectureNumber: 1 });
-    
-    res.json({ success: true, count: lectures.length, data: lectures });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
+// =====================================================
+// @route   GET /api/lectures/course/:courseId
+// @desc    Get all published lectures for a course (Public)
+// @access  Public
+// =====================================================
+router.get('/course/:courseId', validateObjectId('courseId'), asyncHandler(async (req, res) => {
+  const query = Lecture.find({ 
+    courseId: req.params.courseId,
+    isPublished: true 
+  });
+  
+  const lectures = await optimizeQuery(query, {
+    sort: { lectureNumber: 1 },
+    timeout: 8000
+  });
+  
+  sendList(res, lectures, 'Lectures retrieved successfully');
+}));
 
-// Get all lectures for a course (admin - all including drafts)
-router.get('/admin/course/:courseId', auth, async (req, res) => {
-  try {
-    const lectures = await Lecture.find({ 
-      courseId: req.params.courseId
-    }).sort({ lectureNumber: 1 });
-    
-    res.json({ success: true, count: lectures.length, data: lectures });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
+// =====================================================
+// @route   GET /api/lectures/admin/course/:courseId
+// @desc    Get all lectures for a course (Admin - including drafts)
+// @access  Private
+// =====================================================
+router.get('/admin/course/:courseId', auth, validateObjectId('courseId'), asyncHandler(async (req, res) => {
+  const query = Lecture.find({ courseId: req.params.courseId });
+  
+  const lectures = await optimizeQuery(query, {
+    sort: { lectureNumber: 1 },
+    timeout: 8000
+  });
+  
+  sendList(res, lectures, 'Lectures retrieved successfully');
+}));
 
-// Get single lecture
-router.get('/:id', async (req, res) => {
-  try {
-    const lecture = await Lecture.findById(req.params.id);
-    if (!lecture) {
-      return res.status(404).json({ success: false, message: 'Lecture not found' });
-    }
-    res.json({ success: true, data: lecture });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+// =====================================================
+// @route   GET /api/lectures/:id
+// @desc    Get single lecture by ID
+// @access  Public
+// =====================================================
+router.get('/:id', validateObjectId('id'), asyncHandler(async (req, res) => {
+  const query = Lecture.findById(req.params.id);
+  const lecture = await optimizeQuery(query, { timeout: 5000 });
+  
+  if (!lecture) {
+    return sendNotFound(res, 'Lecture');
   }
-});
+  
+  sendSuccess(res, lecture, 'Lecture retrieved successfully');
+}));
 
-// Create lecture
-router.post('/', auth, async (req, res) => {
-  try {
-    const lecture = new Lecture(req.body);
-    await lecture.save();
-    res.status(201).json({ success: true, message: 'Lecture created successfully', data: lecture });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
+// =====================================================
+// @route   POST /api/lectures
+// @desc    Create new lecture
+// @access  Private (Admin)
+// =====================================================
+router.post('/', auth, asyncHandler(async (req, res) => {
+  const lecture = new Lecture(req.body);
+  await lecture.save();
+  
+  sendSuccess(res, lecture, 'Lecture created successfully', 201);
+}));
 
-// Update lecture
-router.put('/:id', auth, async (req, res) => {
-  try {
-    const lecture = await Lecture.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!lecture) {
-      return res.status(404).json({ success: false, message: 'Lecture not found' });
-    }
-    res.json({ success: true, message: 'Lecture updated successfully', data: lecture });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+// =====================================================
+// @route   PUT /api/lectures/:id
+// @desc    Update lecture
+// @access  Private (Admin)
+// =====================================================
+router.put('/:id', auth, validateObjectId('id'), asyncHandler(async (req, res) => {
+  const lecture = await Lecture.findByIdAndUpdate(
+    req.params.id, 
+    req.body, 
+    { new: true, runValidators: true }
+  ).maxTimeMS(8000);
+  
+  if (!lecture) {
+    return sendNotFound(res, 'Lecture');
   }
-});
+  
+  sendSuccess(res, lecture, 'Lecture updated successfully');
+}));
 
-// Delete lecture
-router.delete('/:id', auth, async (req, res) => {
-  try {
-    const lecture = await Lecture.findByIdAndDelete(req.params.id);
-    if (!lecture) {
-      return res.status(404).json({ success: false, message: 'Lecture not found' });
-    }
-    res.json({ success: true, message: 'Lecture deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+// =====================================================
+// @route   DELETE /api/lectures/:id
+// @desc    Delete lecture
+// @access  Private (Admin)
+// =====================================================
+router.delete('/:id', auth, validateObjectId('id'), asyncHandler(async (req, res) => {
+  const lecture = await Lecture.findByIdAndDelete(req.params.id).maxTimeMS(8000);
+  
+  if (!lecture) {
+    return sendNotFound(res, 'Lecture');
   }
+  
+  sendSuccess(res, null, 'Lecture deleted successfully');
+}));
+
+// Error handling middleware for this router
+router.use((error, req, res, next) => {
+  handleRouteError(error, res, 'Lecture operation');
 });
 
 module.exports = router;

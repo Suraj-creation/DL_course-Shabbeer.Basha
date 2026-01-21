@@ -138,12 +138,12 @@ const CourseManager = () => {
   return (
     <div className="manager-page">
       <div className="page-header">
-        <h2>📚 Course Manager</h2>
+        <h1>📚 Course Manager</h1>
         <button 
           className="btn-primary" 
           onClick={() => setShowForm(!showForm)}
         >
-          {showForm ? '✕ Cancel' : '➕ Add New Course'}
+          {showForm ? '✕ Cancel' : '+ Add New Course'}
         </button>
       </div>
 
@@ -342,10 +342,10 @@ const CourseManager = () => {
 
             <div className="form-actions">
               <button type="submit" className="btn-primary">
-                {editingId ? 'Update Course' : 'Create Course'}
+                {editingId ? '✓ Update Course' : '+ Create Course'}
               </button>
               <button type="button" className="btn-secondary" onClick={resetForm}>
-                Cancel
+                ✕ Cancel
               </button>
             </div>
           </form>

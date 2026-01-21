@@ -1,3 +1,10 @@
+/* Import Design System */
+@import './DesignSystem.css';
+
+/* ============================================
+   MANAGER PAGE - Additional Styles
+   ============================================ */
+
 .manager-page {
   max-width: 1400px;
 }

@@ -2,138 +2,100 @@ const express = require('express');
 const router = express.Router();
 const Course = require('../models/Course');
 const auth = require('../middleware/auth');
+const { 
+  asyncHandler, 
+  validateObjectId, 
+  sendSuccess, 
+  sendList, 
+  sendNotFound, 
+  handleRouteError,
+  optimizeQuery 
+} = require('../utils/routeHelpers');
 
+// =====================================================
 // @route   GET /api/courses
-// @desc    Get all courses
+// @desc    Get all active courses
 // @access  Public
-router.get('/', async (req, res) => {
-  try {
-    const courses = await Course.find({ isActive: true }).sort({ createdAt: -1 });
-    
-    res.json({
-      success: true,
-      count: courses.length,
-      data: courses
-    });
-  } catch (error) {
-    console.error('Get courses error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-});
+// =====================================================
+router.get('/', asyncHandler(async (req, res) => {
+  const query = Course.find({ isActive: true });
+  const courses = await optimizeQuery(query, {
+    sort: { createdAt: -1 },
+    timeout: 8000
+  });
+  
+  sendList(res, courses, 'Courses retrieved successfully');
+}));
 
+// =====================================================
 // @route   GET /api/courses/:id
-// @desc    Get single course
+// @desc    Get single course by ID
 // @access  Public
-router.get('/:id', async (req, res) => {
-  try {
-    const course = await Course.findById(req.params.id);
-    
-    if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: 'Course not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: course
-    });
-  } catch (error) {
-    console.error('Get course error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+// =====================================================
+router.get('/:id', validateObjectId('id'), asyncHandler(async (req, res) => {
+  const query = Course.findById(req.params.id);
+  const course = await optimizeQuery(query, { timeout: 5000 });
+  
+  if (!course) {
+    return sendNotFound(res, 'Course');
   }
-});
 
+  sendSuccess(res, course, 'Course retrieved successfully');
+}));
+
+// =====================================================
 // @route   POST /api/courses
 // @desc    Create new course
-// @access  Private
-router.post('/', auth, async (req, res) => {
-  try {
-    const course = new Course(req.body);
-    await course.save();
+// @access  Private (Admin)
+// =====================================================
+router.post('/', auth, asyncHandler(async (req, res) => {
+  const course = new Course(req.body);
+  await course.save();
 
-    res.status(201).json({
-      success: true,
-      message: 'Course created successfully',
-      data: course
-    });
-  } catch (error) {
-    console.error('Create course error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-});
+  sendSuccess(res, course, 'Course created successfully', 201);
+}));
 
+// =====================================================
 // @route   PUT /api/courses/:id
 // @desc    Update course
-// @access  Private
-router.put('/:id', auth, async (req, res) => {
-  try {
-    const course = await Course.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+// @access  Private (Admin)
+// =====================================================
+router.put('/:id', auth, validateObjectId('id'), asyncHandler(async (req, res) => {
+  const course = await Course.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true, runValidators: true }
+  ).maxTimeMS(8000);
 
-    if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: 'Course not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Course updated successfully',
-      data: course
-    });
-  } catch (error) {
-    console.error('Update course error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+  if (!course) {
+    return sendNotFound(res, 'Course');
   }
-});
 
+  sendSuccess(res, course, 'Course updated successfully');
+}));
+
+// =====================================================
 // @route   DELETE /api/courses/:id
 // @desc    Delete course (soft delete)
-// @access  Private
-router.delete('/:id', auth, async (req, res) => {
-  try {
-    const course = await Course.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
+// @access  Private (Admin)
+// =====================================================
+router.delete('/:id', auth, validateObjectId('id'), asyncHandler(async (req, res) => {
+  const course = await Course.findByIdAndUpdate(
+    req.params.id,
+    { isActive: false },
+    { new: true }
+  ).maxTimeMS(8000);
 
-    if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: 'Course not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Course deleted successfully'
-    });
-  } catch (error) {
-    console.error('Delete course error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+  if (!course) {
+    return sendNotFound(res, 'Course');
   }
+
+  sendSuccess(res, null, 'Course deleted successfully');
+}));
+
+// Error handling middleware for this router
+router.use((error, req, res, next) => {
+  handleRouteError(error, res, 'Course operation');
 });
 
 module.exports = router;

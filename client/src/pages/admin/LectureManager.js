@@ -138,7 +138,7 @@ const LectureManager = () => {
       <div className="page-header">
         <h1>🎓 Lecture Manager</h1>
         <button className="btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? '✕ Cancel' : '➕ Add New Lecture'}
+          {showForm ? '✕ Cancel' : '+ Add New Lecture'}
         </button>
       </div>
 
@@ -146,6 +146,7 @@ const LectureManager = () => {
       <div className="course-selector">
         <label>Select Course:</label>
         <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
+          <option value="">Select a course...</option>
           {courses.map(course => (
             <option key={course._id} value={course._id}>
               {course.courseCode} - {course.courseTitle}
@@ -215,7 +216,7 @@ const LectureManager = () => {
                   <button type="button" onClick={() => removeArrayItem('topicsCovered', index)}>✕</button>
                 </div>
               ))}
-              <button type="button" className="btn-secondary" onClick={() => addArrayItem('topicsCovered')}>
+              <button type="button" className="btn-add" onClick={() => addArrayItem('topicsCovered')}>
                 + Add Topic
               </button>
             </div>
@@ -240,7 +241,7 @@ const LectureManager = () => {
                   <button type="button" onClick={() => removeArrayItem('videos', index)}>✕</button>
                 </div>
               ))}
-              <button type="button" className="btn-secondary" onClick={() => addArrayItem('videos')}>
+              <button type="button" className="btn-add" onClick={() => addArrayItem('videos')}>
                 + Add Video
               </button>
             </div>
@@ -265,7 +266,7 @@ const LectureManager = () => {
                   <button type="button" onClick={() => removeArrayItem('slides', index)}>✕</button>
                 </div>
               ))}
-              <button type="button" className="btn-secondary" onClick={() => addArrayItem('slides')}>
+              <button type="button" className="btn-add" onClick={() => addArrayItem('slides')}>
                 + Add Slides
               </button>
             </div>
@@ -302,7 +303,7 @@ const LectureManager = () => {
                   <button type="button" onClick={() => removeArrayItem('readingMaterials', index)}>✕</button>
                 </div>
               ))}
-              <button type="button" className="btn-secondary" onClick={() => addArrayItem('readingMaterials')}>
+              <button type="button" className="btn-add" onClick={() => addArrayItem('readingMaterials')}>
                 + Add Reading Material
               </button>
             </div>
@@ -320,10 +321,10 @@ const LectureManager = () => {
 
             <div className="form-actions">
               <button type="submit" className="btn-primary">
-                {editingId ? 'Update Lecture' : 'Create Lecture'}
+                {editingId ? '✓ Update Lecture' : '+ Create Lecture'}
               </button>
               <button type="button" className="btn-secondary" onClick={resetForm}>
-                Cancel
+                ✕ Cancel
               </button>
             </div>
           </form>

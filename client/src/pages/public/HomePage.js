@@ -1,28 +1,37 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { courseAPI } from '../../services/api';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import { FaBookOpen, FaArrowRight, FaGraduationCap, FaCalendarAlt, FaUserTie, FaLayerGroup, FaFlask, FaBrain, FaLaptopCode, FaRocket } from 'react-icons/fa';
+import { FaBookOpen, FaArrowRight, FaGraduationCap, FaCalendarAlt, FaUserTie, FaLayerGroup, FaFlask, FaBrain, FaLaptopCode, FaRocket, FaExternalLinkAlt, FaExclamationTriangle, FaSync } from 'react-icons/fa';
 import './PublicPages.css';
 
 const HomePage = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  useEffect(() => {
-    loadCourses();
-  }, []);
-
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     try {
+      setLoading(true);
+      setError(null);
       const res = await courseAPI.getAll();
       setCourses(res.data.data || []);
-    } catch (error) {
-      console.error('Error loading courses:', error);
+    } catch (err) {
+      console.error('Error loading courses:', err);
+      setError(err.response?.data?.message || 'Unable to load courses. Please try again.');
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses, retryCount]);
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
   };
 
   return (
@@ -74,6 +83,14 @@ const HomePage = () => {
                   <span className="instructor-label">Primary Instructor</span>
                   <span className="instructor-name">Dr. Shabbeer Basha</span>
                   <span className="instructor-title">Associate Professor, SET, Vidyashilp University</span>
+                  <a 
+                    href="https://sites.google.com/site/shabbeerbashash" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="instructor-website-link"
+                  >
+                    Instructor Website <FaExternalLinkAlt size={12} />
+                  </a>
                 </div>
               </div>
             </div>
@@ -170,6 +187,17 @@ const HomePage = () => {
               <div className="loading-container">
                 <div className="loading-spinner"></div>
                 <span className="loading-text">Loading courses...</span>
+              </div>
+            ) : error ? (
+              <div className="error-state-enhanced">
+                <div className="error-icon-wrapper">
+                  <FaExclamationTriangle className="error-icon" />
+                </div>
+                <h3>Unable to Load Courses</h3>
+                <p>{error}</p>
+                <button onClick={handleRetry} className="retry-btn">
+                  <FaSync /> Try Again
+                </button>
               </div>
             ) : courses.length === 0 ? (
               <div className="empty-state-enhanced">

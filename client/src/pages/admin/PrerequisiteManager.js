@@ -100,16 +100,16 @@ const PrerequisiteManager = () => {
   return (
     <div className="manager-page">
       <div className="page-header">
-        <h2>📋 Prerequisite Manager</h2>
+        <h1>📋 Prerequisite Manager</h1>
         <button className="btn-primary" onClick={() => setShowForm(!showForm)} disabled={!selectedCourse}>
-          {showForm ? '✕ Cancel' : '➕ Add New Prerequisite'}
+          {showForm ? '✕ Cancel' : '+ Add New Prerequisite'}
         </button>
       </div>
 
       <div className="course-selector">
         <label>Select Course:</label>
         <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
-          <option value="">-- Choose a course --</option>
+          <option value="">Select a course...</option>
           {courses.map(course => (<option key={course._id} value={course._id}>{course.courseCode} - {course.courseTitle}</option>))}
         </select>
       </div>
@@ -164,12 +164,12 @@ const PrerequisiteManager = () => {
                   {formData.resources.length > 1 && (<button type="button" onClick={() => removeResource(index)} className="btn-remove">✕</button>)}
                 </div>
               ))}
-              <button type="button" onClick={addResource} className="btn-secondary">+ Add Resource</button>
+              <button type="button" onClick={addResource} className="btn-add">+ Add Resource</button>
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="btn-primary">{editingId ? 'Update Prerequisite' : 'Create Prerequisite'}</button>
-              <button type="button" className="btn-secondary" onClick={resetForm}>Cancel</button>
+              <button type="submit" className="btn-primary">{editingId ? '✓ Update Prerequisite' : '+ Create Prerequisite'}</button>
+              <button type="button" className="btn-secondary" onClick={resetForm}>✕ Cancel</button>
             </div>
           </form>
         </div>
