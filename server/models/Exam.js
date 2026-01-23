@@ -30,7 +30,7 @@ const ExamSchema = new mongoose.Schema({
   },
   duration: {
     type: String,
-    required: true
+    default: ''
   },
   totalMarks: {
     type: Number,
@@ -51,19 +51,19 @@ const ExamSchema = new mongoose.Schema({
     type: String
   }],
   preparationResources: [{
-    title: String,
-    url: String,
-    type: String
+    title: { type: String },
+    url: { type: String },
+    resourceType: { type: String }
   }],
   samplePapers: [{
-    title: String,
-    url: String,
-    year: String
+    title: { type: String },
+    url: { type: String },
+    year: { type: String }
   }],
   importantDates: [{
-    event: String,
-    date: Date,
-    description: String
+    event: { type: String },
+    date: { type: Date },
+    description: { type: String }
   }],
   isPublished: {
     type: Boolean,

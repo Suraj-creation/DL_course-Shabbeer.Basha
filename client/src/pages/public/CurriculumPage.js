@@ -2,6 +2,7 @@
 import { courseAPI, lectureAPI } from '../../services/api';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import CourseDropdown from '../../components/CourseDropdown';
 import { FaPlay, FaFileAlt, FaBook, FaExternalLinkAlt } from 'react-icons/fa';
 import './PublicPages.css';
 
@@ -51,16 +52,14 @@ const CurriculumPage = () => {
           </div>
         ) : (
           <>
-            <div className="course-selector-container">
-              <label>Select Course:</label>
-              <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
-                {courses.map(course => (
-                  <option key={course._id} value={course._id}>
-                    {course.courseCode} - {course.courseTitle}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <CourseDropdown 
+              courses={courses}
+              selectedCourse={selectedCourse}
+              onSelect={setSelectedCourse}
+              icon={FaBook}
+              label="Select Course:"
+              accentColor="#3b82f6"
+            />
 
             <section className="lectures-section">
               {lectures.length === 0 ? (

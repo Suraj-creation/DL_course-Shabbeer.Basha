@@ -1,0 +1,338 @@
+/* ================================================
+   REUSABLE COURSE DROPDOWN COMPONENT STYLES
+   ================================================ */
+
+.course-dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1.5rem;
+  border: 1px solid #f1f5f9;
+  transition: box-shadow 0.3s ease;
+}
+
+.course-dropdown-container:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-label-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 160px;
+}
+
+.dropdown-icon-wrapper {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.dropdown-label-text {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.custom-course-dropdown {
+  position: relative;
+  flex: 1;
+  max-width: 450px;
+}
+
+.dropdown-trigger-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.dropdown-trigger-btn:hover {
+  transform: translateY(-2px);
+}
+
+.dropdown-trigger-btn.open {
+  border-radius: 12px 12px 0 0;
+}
+
+.selected-course-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.course-code-tag {
+  font-weight: 700;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.course-separator {
+  opacity: 0.5;
+  font-weight: 300;
+}
+
+.course-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placeholder {
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.dropdown-arrow {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.dropdown-arrow.rotated {
+  transform: rotate(180deg);
+}
+
+.dropdown-options-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  overflow: hidden;
+  animation: dropdownSlideIn 0.2s ease-out;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+@keyframes dropdownSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border: none;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.dropdown-option:hover {
+  background: #f8fafc;
+}
+
+.dropdown-option.selected {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+}
+
+.dropdown-option:not(:last-child) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.option-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.option-code {
+  font-weight: 700;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.option-title {
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selected-indicator {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Custom Scrollbar for dropdown menu */
+.dropdown-options-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-options-menu::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.dropdown-options-menu::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dropdown-options-menu::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ================================
+   RESPONSIVE STYLES
+   ================================ */
+@media (max-width: 768px) {
+  .course-dropdown-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.875rem;
+    padding: 1rem;
+  }
+  
+  .dropdown-label-group {
+    justify-content: flex-start;
+    min-width: auto;
+  }
+  
+  .dropdown-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    font-size: 0.95rem;
+  }
+  
+  .custom-course-dropdown {
+    max-width: none;
+  }
+  
+  .dropdown-trigger-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .course-code-tag {
+    font-size: 0.8rem;
+    padding: 3px 8px;
+  }
+  
+  .dropdown-options-menu {
+    max-height: 250px;
+  }
+  
+  .dropdown-option {
+    padding: 0.875rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .course-dropdown-container {
+    padding: 0.875rem;
+  }
+  
+  .dropdown-label-group {
+    gap: 0.5rem;
+  }
+  
+  .dropdown-label-text {
+    font-size: 0.9rem;
+  }
+  
+  .selected-course-info {
+    flex-wrap: wrap;
+  }
+  
+  .course-separator {
+    display: none;
+  }
+  
+  .course-name {
+    width: 100%;
+    margin-top: 2px;
+    font-size: 0.85rem;
+  }
+}
+
+/* ================================
+   ACCESSIBILITY
+   ================================ */
+.dropdown-trigger-btn:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.dropdown-option:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: -2px;
+  background: #f8fafc;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .course-dropdown-container {
+    border: 2px solid #374151;
+  }
+  
+  .dropdown-trigger-btn {
+    border: 2px solid white;
+  }
+  
+  .dropdown-option {
+    border-bottom: 1px solid #374151;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-arrow,
+  .dropdown-trigger-btn,
+  .dropdown-option,
+  .course-dropdown-container {
+    transition: none;
+  }
+  
+  .dropdown-options-menu {
+    animation: none;
+  }
+}

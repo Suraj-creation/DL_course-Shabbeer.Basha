@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { FaEnvelope, FaMapMarkerAlt, FaClock, FaUserTie, FaUsers } from 'react-icons/fa';
+import { FaEnvelope, FaMapMarkerAlt, FaClock, FaUserTie, FaUsers, FaGraduationCap } from 'react-icons/fa';
 import { courseAPI, taAPI } from '../../services/api';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import CourseDropdown from '../../components/CourseDropdown';
 import './PublicPages.css';
 
 const TeachingTeamPage = () => {
@@ -52,18 +53,14 @@ const TeachingTeamPage = () => {
           </div>
         ) : (
           <>
-            <div className="course-selector-container">
-              <div className="selector-wrapper">
-                <label>Select Course:</label>
-                <select value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
-                  {courses.map(course => (
-                    <option key={course._id} value={course._id}>
-                      {course.courseCode} - {course.courseTitle}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <CourseDropdown 
+              courses={courses}
+              selectedCourse={selectedCourse}
+              onSelect={setSelectedCourse}
+              icon={FaGraduationCap}
+              label="Select Course:"
+              accentColor="#10b981"
+            />
 
             {/* Display Course Instructor */}
             {currentCourse && currentCourse.instructor && (

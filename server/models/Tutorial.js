@@ -18,6 +18,13 @@ const TutorialSchema = new mongoose.Schema({
   description: {
     type: String
   },
+  briefSummary: {
+    type: String,
+    maxlength: 300
+  },
+  learningObjectives: [{
+    type: String
+  }],
   topicsCovered: [{
     type: String
   }],

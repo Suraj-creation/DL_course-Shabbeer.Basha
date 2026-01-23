@@ -50,7 +50,12 @@ router.post('/', auth, async (req, res) => {
     await exam.save();
     res.status(201).json({ success: true, message: 'Exam created successfully', data: exam });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Error creating exam:', error.message);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ success: false, message: messages.join(', ') });
+    }
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 });
 
@@ -63,7 +68,12 @@ router.put('/:id', auth, async (req, res) => {
     }
     res.json({ success: true, message: 'Exam updated successfully', data: exam });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Error updating exam:', error.message);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ success: false, message: messages.join(', ') });
+    }
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 });
 

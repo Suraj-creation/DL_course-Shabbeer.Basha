@@ -1,24 +1,32 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { courseAPI, lectureAPI } from '../../services/api';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import { FaPlay, FaFileAlt, FaBook, FaExternalLinkAlt, FaClock, FaCalendarAlt, FaListUl, FaTimes, FaExpand, FaCompress, FaChevronLeft, FaChevronRight, FaDownload, FaGlobe, FaExclamationTriangle, FaSync } from 'react-icons/fa';
+import CourseDropdown from '../../components/CourseDropdown';
+import { 
+  FaPlay, FaFileAlt, FaBook, FaExternalLinkAlt, FaCalendarAlt, 
+  FaTimes, FaExpand, FaCompress, FaChevronLeft, FaChevronRight, 
+  FaDownload, FaGlobe, FaExclamationTriangle, FaSync, FaCheckCircle,
+  FaSearch, FaSortAmountDown, FaChevronDown, FaVideo, FaBookOpen,
+  FaTag, FaInfoCircle, FaEye, FaPlayCircle, FaGraduationCap
+} from 'react-icons/fa';
 import './PublicPages.css';
 
-// Utility function to convert Google Slides URL to embed URL
+// =====================================================
+// UTILITY FUNCTIONS
+// =====================================================
+
+// Convert Google Slides URL to embed URL
 const getEmbedUrl = (url) => {
   if (!url) return null;
   
-  // Google Slides
   if (url.includes('docs.google.com/presentation')) {
-    // Convert edit URL to embed URL
     const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (match) {
       return `https://docs.google.com/presentation/d/${match[1]}/embed?start=false&loop=false&delayms=3000`;
     }
   }
   
-  // Google Docs
   if (url.includes('docs.google.com/document')) {
     const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (match) {
@@ -26,7 +34,6 @@ const getEmbedUrl = (url) => {
     }
   }
   
-  // Google Drive files (PDFs, etc.)
   if (url.includes('drive.google.com')) {
     const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/) || url.match(/id=([a-zA-Z0-9-_]+)/);
     if (match) {
@@ -34,12 +41,10 @@ const getEmbedUrl = (url) => {
     }
   }
   
-  // Direct PDF URLs
   if (url.endsWith('.pdf') || url.includes('.pdf?')) {
     return url;
   }
   
-  // YouTube videos
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     const videoId = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
     if (videoId) {
@@ -47,7 +52,6 @@ const getEmbedUrl = (url) => {
     }
   }
   
-  // For other URLs, return as-is (might work with iframe)
   return url;
 };
 
@@ -55,7 +59,6 @@ const getEmbedUrl = (url) => {
 const getDownloadUrl = (url) => {
   if (!url) return null;
   
-  // Google Drive files
   if (url.includes('drive.google.com')) {
     const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/) || url.match(/id=([a-zA-Z0-9-_]+)/);
     if (match) {
@@ -63,7 +66,6 @@ const getDownloadUrl = (url) => {
     }
   }
   
-  // Google Slides - export as PDF
   if (url.includes('docs.google.com/presentation')) {
     const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (match) {
@@ -71,7 +73,6 @@ const getDownloadUrl = (url) => {
     }
   }
   
-  // Google Docs - export as PDF
   if (url.includes('docs.google.com/document')) {
     const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (match) {
@@ -79,7 +80,6 @@ const getDownloadUrl = (url) => {
     }
   }
   
-  // Direct file URLs
   if (url.endsWith('.pdf') || url.endsWith('.pptx') || url.endsWith('.docx') || url.endsWith('.zip')) {
     return url;
   }
@@ -94,7 +94,6 @@ const getContentType = (url) => {
   if (url.includes('docs.google.com/document')) return 'document';
   if (url.includes('drive.google.com') || url.endsWith('.pdf') || url.includes('.pdf?')) return 'pdf';
   if (url.includes('youtube.com') || url.includes('youtu.be')) return 'video';
-  // Check for common website patterns
   if (url.startsWith('http://') || url.startsWith('https://')) return 'website';
   return 'other';
 };
@@ -102,18 +101,47 @@ const getContentType = (url) => {
 // Check if URL can be embedded
 const canEmbed = (url) => {
   if (!url) return false;
-  // These can typically be embedded
   if (url.includes('docs.google.com')) return true;
   if (url.includes('drive.google.com')) return true;
   if (url.includes('youtube.com') || url.includes('youtu.be')) return true;
   if (url.endsWith('.pdf') || url.includes('.pdf?')) return true;
-  // Many websites block embedding via X-Frame-Options
   return false;
 };
 
-// Content Viewer Component
+// Get YouTube thumbnail
+const getYouTubeThumbnail = (url) => {
+  if (!url) return null;
+  const videoId = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+  if (videoId) {
+    return `https://img.youtube.com/vi/${videoId[1]}/mqdefault.jpg`;
+  }
+  return null;
+};
+
+// Format date
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+// Truncate text
+const truncateText = (text, maxLength) => {
+  if (!text || text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+};
+
+// =====================================================
+// CONTENT VIEWER COMPONENT
+// =====================================================
+
 const ContentViewer = ({ content, onClose, allContent, currentIndex, onNavigate }) => {
-  const [isFullscreen, setIsFullscreen] = useState(true); // Start in fullscreen by default
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [embedError, setEmbedError] = useState(false);
   
@@ -147,7 +175,6 @@ const ContentViewer = ({ content, onClose, allContent, currentIndex, onNavigate 
   return (
     <div className={`content-viewer-overlay ${isFullscreen ? 'fullscreen' : ''}`}>
       <div className="content-viewer-container">
-        {/* Header */}
         <div className="viewer-header">
           <div className="viewer-title">
             <span className={`content-type-badge ${contentType}`}>
@@ -162,37 +189,17 @@ const ContentViewer = ({ content, onClose, allContent, currentIndex, onNavigate 
           </div>
           <div className="viewer-controls">
             {allContent.length > 1 && (
-              <span className="nav-indicator">
-                {currentIndex + 1} / {allContent.length}
-              </span>
+              <span className="nav-indicator">{currentIndex + 1} / {allContent.length}</span>
             )}
-            {/* Download Button - only show for downloadable content */}
             {downloadUrl && (
-              <a 
-                href={downloadUrl} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="viewer-btn download-btn"
-                title="Download"
-                download
-              >
+              <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="viewer-btn download-btn" title="Download" download>
                 <FaDownload />
               </a>
             )}
-            <a 
-              href={content?.url} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="viewer-btn"
-              title="Open in new tab"
-            >
+            <a href={content?.url} target="_blank" rel="noopener noreferrer" className="viewer-btn" title="Open in new tab">
               <FaExternalLinkAlt />
             </a>
-            <button 
-              className="viewer-btn"
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-            >
+            <button className="viewer-btn" onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
               {isFullscreen ? <FaCompress /> : <FaExpand />}
             </button>
             <button className="viewer-btn close-btn" onClick={onClose} title="Close">
@@ -201,15 +208,9 @@ const ContentViewer = ({ content, onClose, allContent, currentIndex, onNavigate 
           </div>
         </div>
         
-        {/* Content Area */}
         <div className="viewer-content">
-          {/* Navigation Arrows */}
           {allContent.length > 1 && currentIndex > 0 && (
-            <button 
-              className="nav-arrow prev"
-              onClick={() => onNavigate(currentIndex - 1)}
-              title="Previous"
-            >
+            <button className="nav-arrow prev" onClick={() => onNavigate(currentIndex - 1)} title="Previous">
               <FaChevronLeft />
             </button>
           )}
@@ -265,17 +266,12 @@ const ContentViewer = ({ content, onClose, allContent, currentIndex, onNavigate 
           )}
           
           {allContent.length > 1 && currentIndex < allContent.length - 1 && (
-            <button 
-              className="nav-arrow next"
-              onClick={() => onNavigate(currentIndex + 1)}
-              title="Next"
-            >
+            <button className="nav-arrow next" onClick={() => onNavigate(currentIndex + 1)} title="Next">
               <FaChevronRight />
             </button>
           )}
         </div>
         
-        {/* Footer with thumbnails */}
         {allContent.length > 1 && (
           <div className="viewer-thumbnails">
             {allContent.map((item, idx) => (
@@ -302,6 +298,282 @@ const ContentViewer = ({ content, onClose, allContent, currentIndex, onNavigate 
   );
 };
 
+// =====================================================
+// STAT CARD COMPONENT
+// =====================================================
+
+const StatCard = ({ icon, value, label, gradient }) => (
+  <div className={`lectures-stat-card ${gradient}`}>
+    <div className="stat-icon-wrapper">{icon}</div>
+    <span className="stat-value">{value}</span>
+    <span className="stat-label">{label}</span>
+  </div>
+);
+
+// =====================================================
+// LECTURE CARD COMPONENT
+// =====================================================
+
+const LectureCard = ({ 
+  lecture, 
+  lectureNumber, 
+  isLatest, 
+  isExpanded, 
+  onToggle,
+  onOpenViewer 
+}) => {
+  const topicsCount = lecture.topicsCovered?.length || 0;
+  const slidesCount = lecture.slides?.length || 0;
+  const videosCount = lecture.videos?.length || 0;
+  const readingsCount = lecture.readingMaterials?.length || 0;
+
+  return (
+    <div className={`lectures-card ${isExpanded ? 'expanded' : ''}`}>
+      {/* Card Header */}
+      <div className="lectures-card-header" onClick={onToggle}>
+        {/* Lecture Number Badge */}
+        <div className="lectures-number-badge">
+          <span className="lecture-label">L</span>
+          <span className="lecture-num">{lectureNumber}</span>
+        </div>
+        
+        {/* Main Info */}
+        <div className="lectures-main-info">
+          <div className="lectures-title-row">
+            <h3 className="lectures-title">{lecture.title}</h3>
+            {isLatest && <span className="new-badge">NEW</span>}
+          </div>
+          
+          <div className="lectures-metadata">
+            {lecture.date && (
+              <span className="meta-item">
+                <FaCalendarAlt />
+                {formatDate(lecture.date)}
+              </span>
+            )}
+            {topicsCount > 0 && (
+              <span className="meta-item">
+                <FaTag />
+                {topicsCount} topics
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Right Section - Indicators */}
+        <div className="lectures-right-section">
+          <div className="lectures-indicators">
+            {lecture.isPublished && (
+              <span className="status-badge published">
+                <FaCheckCircle /> Published
+              </span>
+            )}
+            <div className="resource-indicators">
+              {slidesCount > 0 && (
+                <span className="indicator-badge slides">
+                  <FaFileAlt /> {slidesCount}
+                </span>
+              )}
+              {videosCount > 0 && (
+                <span className="indicator-badge videos">
+                  <FaVideo /> {videosCount}
+                </span>
+              )}
+              {readingsCount > 0 && (
+                <span className="indicator-badge readings">
+                  <FaBookOpen /> {readingsCount}
+                </span>
+              )}
+            </div>
+          </div>
+          
+          <button className="lectures-expand-btn">
+            <FaChevronDown className={isExpanded ? 'rotated' : ''} />
+          </button>
+        </div>
+      </div>
+      
+      {/* Preview Section (Collapsed) */}
+      {!isExpanded && lecture.description && (
+        <div className="lectures-preview">
+          <p className="preview-text">{truncateText(lecture.description, 150)}</p>
+          
+          {topicsCount > 0 && (
+            <div className="topic-pills-preview">
+              {lecture.topicsCovered.slice(0, 3).map((topic, i) => (
+                <span key={i} className="topic-pill">{topic}</span>
+              ))}
+              {topicsCount > 3 && (
+                <span className="more-topics">+{topicsCount - 3} more</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="lectures-expanded-content">
+          {/* Description Section */}
+          {lecture.description && (
+            <section className="lectures-content-section">
+              <h4 className="section-title">
+                <FaInfoCircle /> Lecture Overview
+              </h4>
+              <p className="lectures-description">{lecture.description}</p>
+            </section>
+          )}
+          
+          {/* Topics Grid */}
+          {topicsCount > 0 && (
+            <section className="lectures-content-section">
+              <h4 className="section-title">
+                <FaTag /> Topics Covered
+              </h4>
+              <div className="topics-grid">
+                {lecture.topicsCovered.map((topic, index) => (
+                  <div key={index} className="topic-card">
+                    <span className="topic-number">{index + 1}</span>
+                    <span className="topic-name">{topic}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          
+          {/* Slides & Materials */}
+          {slidesCount > 0 && (
+            <section className="lectures-content-section">
+              <h4 className="section-title">
+                <FaFileAlt /> Slides & Materials
+              </h4>
+              <div className="materials-grid">
+                {lecture.slides.map((slide, index) => (
+                  <div key={index} className="material-card">
+                    <div className="material-icon-wrapper">
+                      <FaFileAlt />
+                    </div>
+                    <div className="material-info">
+                      <h5 className="material-title">{slide.title}</h5>
+                      <span className="material-meta">
+                        {getContentType(slide.url) === 'slides' ? 'Google Slides' : 'PDF Document'}
+                      </span>
+                    </div>
+                    <div className="material-actions">
+                      <button 
+                        className="action-btn view-btn"
+                        onClick={() => onOpenViewer(slide, lecture.slides, index)}
+                      >
+                        <FaEye /> View
+                      </button>
+                      {getDownloadUrl(slide.url) && (
+                        <a 
+                          href={getDownloadUrl(slide.url)} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="action-btn download-btn"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <FaDownload /> Download
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          
+          {/* Videos */}
+          {videosCount > 0 && (
+            <section className="lectures-content-section">
+              <h4 className="section-title">
+                <FaVideo /> Video Lectures
+              </h4>
+              <div className="videos-grid">
+                {lecture.videos.map((video, index) => (
+                  <div key={index} className="video-card">
+                    <div className="video-thumbnail">
+                      {getYouTubeThumbnail(video.url) ? (
+                        <img src={getYouTubeThumbnail(video.url)} alt={video.title} />
+                      ) : (
+                        <div className="video-placeholder">
+                          <FaPlayCircle />
+                        </div>
+                      )}
+                      <div className="play-overlay">
+                        <FaPlayCircle />
+                      </div>
+                      {video.duration && (
+                        <span className="video-duration">{video.duration}</span>
+                      )}
+                    </div>
+                    <div className="video-info">
+                      <h5 className="video-title">{video.title}</h5>
+                      <button 
+                        className="watch-btn"
+                        onClick={() => onOpenViewer(video, lecture.videos, index)}
+                      >
+                        <FaPlay /> Watch Now
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          
+          {/* Reading Materials */}
+          {readingsCount > 0 && (
+            <section className="lectures-content-section">
+              <h4 className="section-title">
+                <FaBookOpen /> Reading Materials
+              </h4>
+              <div className="readings-list">
+                {lecture.readingMaterials.map((reading, index) => (
+                  <a 
+                    key={index}
+                    href={reading.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="reading-item"
+                    onClick={(e) => {
+                      if (reading.url && canEmbed(reading.url)) {
+                        e.preventDefault();
+                        const embedReads = lecture.readingMaterials.filter(r => r.url && canEmbed(r.url));
+                        const embIdx = embedReads.findIndex(r => r.url === reading.url);
+                        if (embIdx >= 0) onOpenViewer(reading, embedReads, embIdx);
+                      }
+                    }}
+                  >
+                    <div className="reading-icon">
+                      <FaBook />
+                    </div>
+                    <div className="reading-content">
+                      <h5 className="reading-title">{reading.title}</h5>
+                      {reading.author && (
+                        <span className="reading-author">— {reading.author}</span>
+                      )}
+                    </div>
+                    <div className="reading-action">
+                      <FaExternalLinkAlt />
+                      <span>Open</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// =====================================================
+// MAIN LECTURES PAGE COMPONENT
+// =====================================================
+
 const LecturesPage = () => {
   const [courses, setCourses] = useState([]);
   const [lectures, setLectures] = useState([]);
@@ -311,6 +583,8 @@ const LecturesPage = () => {
   const [error, setError] = useState(null);
   const [lecturesError, setLecturesError] = useState(null);
   const [expandedLecture, setExpandedLecture] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('oldest'); // 'oldest', 'newest', 'number'
   
   // Viewer state
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -366,7 +640,49 @@ const LecturesPage = () => {
     setExpandedLecture(expandedLecture === lectureId ? null : lectureId);
   };
 
-  // Open content viewer
+  // Sort and filter lectures
+  const processedLectures = useMemo(() => {
+    let filtered = [...lectures];
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(lecture => 
+        lecture.title?.toLowerCase().includes(query) ||
+        lecture.description?.toLowerCase().includes(query) ||
+        lecture.topicsCovered?.some(topic => topic.toLowerCase().includes(query))
+      );
+    }
+    
+    // Sort
+    filtered.sort((a, b) => {
+      if (sortOrder === 'newest') {
+        return new Date(b.date) - new Date(a.date);
+      } else if (sortOrder === 'oldest') {
+        return new Date(a.date) - new Date(b.date);
+      } else {
+        return (a.lectureNumber || 0) - (b.lectureNumber || 0);
+      }
+    });
+    
+    // Add proper sequential numbering based on date order (oldest first)
+    const dateOrdered = [...lectures].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    return filtered.map(lecture => ({
+      ...lecture,
+      displayNumber: dateOrdered.findIndex(l => l._id === lecture._id) + 1
+    }));
+  }, [lectures, searchQuery, sortOrder]);
+
+  // Calculate statistics
+  const stats = useMemo(() => ({
+    totalLectures: lectures.length,
+    totalVideos: lectures.reduce((acc, l) => acc + (l.videos?.length || 0), 0),
+    totalSlides: lectures.reduce((acc, l) => acc + (l.slides?.length || 0), 0),
+    totalReadings: lectures.reduce((acc, l) => acc + (l.readingMaterials?.length || 0), 0)
+  }), [lectures]);
+
+  // Viewer functions
   const openViewer = (content, allContent, index) => {
     setViewerContent(content);
     setAllViewerContent(allContent);
@@ -374,13 +690,11 @@ const LecturesPage = () => {
     setViewerOpen(true);
   };
 
-  // Navigate within viewer
   const navigateViewer = (index) => {
     setCurrentContentIndex(index);
     setViewerContent(allViewerContent[index]);
   };
 
-  // Close viewer
   const closeViewer = () => {
     setViewerOpen(false);
     setViewerContent(null);
@@ -389,25 +703,47 @@ const LecturesPage = () => {
   };
 
   return (
-    <div className="public-page">
+    <div className="public-page lectures-page">
       <Header userRole="student" />
       
-      <main className="main-container">
-        <div className="page-header-enhanced">
-          <div className="page-header-content">
-            <span className="page-badge">Course Content</span>
-            <h1>Lectures</h1>
-            <p>Browse through all lectures, videos, slides and learning materials</p>
+      <main className="lectures-main-container">
+        {/* Hero Section */}
+        <div className="lectures-hero-section">
+          <div className="lectures-hero-content">
+            <div className="lectures-course-badge">
+              <FaGraduationCap /> COURSE CONTENT
+            </div>
+            <h1 className="lectures-page-title">Lecture Library</h1>
+            <p className="lectures-page-subtitle">
+              Browse through all lectures, videos, slides and learning materials
+            </p>
           </div>
-          <div className="page-header-stats">
-            <div className="stat-pill">
-              <FaListUl />
-              <span>{lectures.length} Lectures</span>
-            </div>
-            <div className="stat-pill">
-              <FaClock />
-              <span>{lectures.filter(l => l.videos?.length > 0).length} Video Sessions</span>
-            </div>
+          
+          <div className="lectures-stats-grid">
+            <StatCard 
+              icon={<FaBookOpen />}
+              value={stats.totalLectures}
+              label="Lectures"
+              gradient="blue"
+            />
+            <StatCard 
+              icon={<FaVideo />}
+              value={stats.totalVideos}
+              label="Video Sessions"
+              gradient="purple"
+            />
+            <StatCard 
+              icon={<FaFileAlt />}
+              value={stats.totalSlides}
+              label="Slide Decks"
+              gradient="green"
+            />
+            <StatCard 
+              icon={<FaBook />}
+              value={stats.totalReadings}
+              label="Readings"
+              gradient="orange"
+            />
           </div>
         </div>
 
@@ -429,25 +765,46 @@ const LecturesPage = () => {
           </div>
         ) : (
           <>
-            <div className="course-selector-enhanced">
-              <div className="selector-label">
-                <FaBook className="selector-icon" />
-                <span>Select Course</span>
+            {/* Course Selector & Controls */}
+            <div className="lectures-controls-section">
+              <div className="lectures-course-selector">
+                <CourseDropdown 
+                  courses={courses}
+                  selectedCourse={selectedCourse}
+                  onSelect={setSelectedCourse}
+                  icon={FaGraduationCap}
+                  label="Select Course:"
+                  accentColor="#667eea"
+                />
               </div>
-              <select 
-                value={selectedCourse} 
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="course-select"
-              >
-                {courses.map(course => (
-                  <option key={course._id} value={course._id}>
-                    {course.courseCode} - {course.courseTitle}
-                  </option>
-                ))}
-              </select>
+              
+              <div className="lectures-filter-controls">
+                <div className="lectures-search-box">
+                  <FaSearch className="search-icon" />
+                  <input 
+                    type="text" 
+                    placeholder="Search lectures by title or topic..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                
+                <div className="lectures-sort-dropdown">
+                  <FaSortAmountDown className="sort-icon" />
+                  <select 
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value)}
+                  >
+                    <option value="oldest">Oldest First (Chronological)</option>
+                    <option value="newest">Newest First</option>
+                    <option value="number">By Lecture Number</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <section className="lectures-section">
+            {/* Lectures List */}
+            <section className="lectures-list-section">
               {lecturesLoading ? (
                 <div className="loading-container">
                   <div className="loading-spinner"></div>
@@ -464,182 +821,35 @@ const LecturesPage = () => {
                     <FaSync /> Try Again
                   </button>
                 </div>
-              ) : lectures.length === 0 ? (
+              ) : processedLectures.length === 0 ? (
                 <div className="empty-state-enhanced">
                   <div className="empty-icon-wrapper">
                     <FaBook className="empty-icon" />
                   </div>
-                  <h3>No Lectures Available</h3>
-                  <p>Lectures will appear here once published by the instructor.</p>
+                  <h3>{searchQuery ? 'No Lectures Found' : 'No Lectures Available'}</h3>
+                  <p>
+                    {searchQuery 
+                      ? `No lectures match "${searchQuery}". Try a different search term.`
+                      : 'Lectures will appear here once published by the instructor.'}
+                  </p>
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="retry-btn">
+                      Clear Search
+                    </button>
+                  )}
                 </div>
               ) : (
-                <div className="lectures-list-enhanced">
-                  {lectures.map((lecture, index) => (
-                    <div 
-                      key={lecture._id} 
-                      className={`lecture-card-enhanced ${expandedLecture === lecture._id ? 'expanded' : ''}`}
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                    >
-                      <div 
-                        className="lecture-card-header"
-                        onClick={() => toggleLecture(lecture._id)}
-                      >
-                        <div className="lecture-number-badge">
-                          {lecture.lectureNumber}
-                        </div>
-                        <div className="lecture-main-info">
-                          <h3>{lecture.title}</h3>
-                          {lecture.date && (
-                            <span className="lecture-date">
-                              <FaCalendarAlt />
-                              {new Date(lecture.date).toLocaleDateString('en-US', { 
-                                weekday: 'short', 
-                                month: 'short', 
-                                day: 'numeric' 
-                              })}
-                            </span>
-                          )}
-                        </div>
-                        <div className="lecture-meta-badges">
-                          {lecture.videos?.length > 0 && (
-                            <span className="meta-badge video">
-                              <FaPlay /> {lecture.videos.length}
-                            </span>
-                          )}
-                          {lecture.slides?.length > 0 && (
-                            <span className="meta-badge slides">
-                              <FaFileAlt /> {lecture.slides.length}
-                            </span>
-                          )}
-                          {lecture.isPublished && (
-                            <span className="status-badge published">Published</span>
-                          )}
-                        </div>
-                        <button className="expand-btn">
-                          <span className={`expand-icon ${expandedLecture === lecture._id ? 'rotated' : ''}`}>
-                            ▼
-                          </span>
-                        </button>
-                      </div>
-                      
-                      <div className={`lecture-card-body ${expandedLecture === lecture._id ? 'show' : ''}`}>
-                        {lecture.description && (
-                          <p className="lecture-description">{lecture.description}</p>
-                        )}
-                        
-                        {lecture.topicsCovered && lecture.topicsCovered.length > 0 && (
-                          <div className="lecture-section">
-                            <h4><FaListUl /> Topics Covered</h4>
-                            <ul className="topics-list">
-                              {lecture.topicsCovered.map((topic, i) => (
-                                <li key={i}>{topic}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        
-                        <div className="lecture-resources-grid">
-                          {lecture.videos && lecture.videos.length > 0 && (
-                            <div className="resource-card videos">
-                              <h4><FaPlay /> Video Lectures</h4>
-                              <ul>
-                                {lecture.videos.map((video, i) => (
-                                  <li key={i}>
-                                    <button
-                                      className="resource-btn"
-                                      onClick={() => openViewer(video, lecture.videos, i)}
-                                    >
-                                      <span className="resource-title">{video.title}</span>
-                                      {video.duration && <span className="resource-meta">{video.duration}</span>}
-                                      <span className="view-badge">View</span>
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          
-                          {lecture.slides && lecture.slides.length > 0 && (
-                            <div className="resource-card slides">
-                              <h4><FaFileAlt /> Slides & Materials</h4>
-                              <ul>
-                                {lecture.slides.map((slide, i) => (
-                                  <li key={i}>
-                                    <div className="resource-btn-group">
-                                      <button
-                                        className="resource-btn"
-                                        onClick={() => openViewer(slide, lecture.slides, i)}
-                                      >
-                                        <span className="resource-title">{slide.title}</span>
-                                        <span className="view-badge">View</span>
-                                      </button>
-                                      {getDownloadUrl(slide.url) && (
-                                        <a 
-                                          href={getDownloadUrl(slide.url)} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          className="download-badge"
-                                          title="Download"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <FaDownload />
-                                        </a>
-                                      )}
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          
-                          {lecture.readingMaterials && lecture.readingMaterials.length > 0 && (
-                            <div className="resource-card readings">
-                              <h4><FaBook /> Reading Materials</h4>
-                              <ul>
-                                {lecture.readingMaterials.map((reading, i) => (
-                                  <li key={i}>
-                                    {reading.url ? (
-                                      // Reading materials: directly open in new browser tab
-                                      // External websites often block iframe embedding
-                                      canEmbed(reading.url) ? (
-                                        <button
-                                          className="resource-btn"
-                                          onClick={() => openViewer(reading, lecture.readingMaterials.filter(r => r.url && canEmbed(r.url)), lecture.readingMaterials.filter(r => r.url && canEmbed(r.url)).findIndex(r => r.url === reading.url))}
-                                        >
-                                          <span className="resource-title">
-                                            {reading.title}
-                                            {reading.author && <span className="resource-author"> — {reading.author}</span>}
-                                          </span>
-                                          <span className="view-badge">View</span>
-                                        </button>
-                                      ) : (
-                                        <a
-                                          href={reading.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="resource-btn resource-external-link"
-                                        >
-                                          <span className="resource-title">
-                                            {reading.title}
-                                            {reading.author && <span className="resource-author"> — {reading.author}</span>}
-                                          </span>
-                                          <span className="view-badge external"><FaExternalLinkAlt /> Open</span>
-                                        </a>
-                                      )
-                                    ) : (
-                                      <span className="resource-title">
-                                        {reading.title}
-                                        {reading.author && <span className="resource-author"> — {reading.author}</span>}
-                                      </span>
-                                    )}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                <div className="lectures-list">
+                  {processedLectures.map((lecture, index) => (
+                    <LectureCard
+                      key={lecture._id}
+                      lecture={lecture}
+                      lectureNumber={lecture.displayNumber}
+                      isLatest={index === processedLectures.length - 1 && sortOrder === 'oldest'}
+                      isExpanded={expandedLecture === lecture._id}
+                      onToggle={() => toggleLecture(lecture._id)}
+                      onOpenViewer={openViewer}
+                    />
                   ))}
                 </div>
               )}
